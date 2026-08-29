@@ -26,24 +26,24 @@ Por questões de segurança, chaves de API e credenciais de banco de dados não 
 ### 3. Comandos de Instalação das Bibliotecas
 Se for a primeira vez configurando o projeto ou caso o `package.json` precise ser reconstruído, instale as dependências principais da aplicação:
 
-\`\`\`bash
+```bash
 npm install express mysql2 dotenv cors firebase-admin axios winston dd-trace
-\`\`\`
+```
 
 Em seguida, instale as dependências de desenvolvimento (ferramentas de código estático, segurança e auto-restart):
 
-\`\`\`bash
+```bash
 npm install --save-dev eslint prettier morgan helmet snyk nodemon
-\`\`\`
+```
 
 *(Nota: Se o arquivo `package.json` já estiver configurado e atualizado no repositório, basta rodar um simples `npm install` para baixar tudo de uma vez).*
 
 ### 4. Executando a API
 Com as bibliotecas instaladas e os arquivos de ambiente na raiz do projeto, inicie o servidor em modo de desenvolvimento (com hot-reload via nodemon):
 
-\`\`\`bash
+```bash
 npm run dev
-\`\`\`
+```
 
 A API estará rodando localmente na porta configurada no seu arquivo `.env` (por padrão `http://localhost:8080`).
 
