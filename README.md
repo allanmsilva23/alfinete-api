@@ -1,4 +1,3 @@
-```markdown
 # 📍 Projeto Alfinete - Backend (API REST)
 
 O **Alfinete** é um Guia de Descoberta que conecta usuários a brechós incentivando a economia circular. Este repositório contém o código-fonte da API RESTful responsável por gerenciar a lógica de negócios, integração com banco de dados e validação de autenticação.
