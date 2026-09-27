@@ -4,6 +4,7 @@ require('newrelic');
 const express = require('express');
 const logger = require('./src/config/logger');
 const thriftRoutes = require('./src/routes/thriftRoutes');
+const apiLimiter = require('./src/config/rateLimit');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -16,8 +17,8 @@ app.get('/', (req, res) => {
   res.send('API do Alfinete rodando com sucesso!');
 });
 
-// Registro das rotas de brechós com o prefixo /brechos
-app.use('/brechos', thriftRoutes);
+// Registro das rotas de brechós com o limitador de segurança ativado
+app.use('/brechos', apiLimiter, thriftRoutes);
 
 app.listen(port, () => {
   console.log(`Servidor iniciado na porta ${port}`);
