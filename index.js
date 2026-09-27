@@ -3,22 +3,25 @@ require('newrelic');
 
 const express = require('express');
 const logger = require('./src/config/logger');
+const apiLimiter = require('./src/config/rateLimit'); 
+
+// Importação das rotas
 const thriftRoutes = require('./src/routes/thriftRoutes');
-const apiLimiter = require('./src/config/rateLimit');
+const requestRoutes = require('./src/routes/requestRoutes');
 
 const app = express();
 const port = process.env.PORT || 8080;
 
 app.use(express.json());
 
-// Rota base de saúde da API
 app.get('/', (req, res) => {
   logger.info('Acessada a rota raiz de saúde da API');
   res.send('API do Alfinete rodando com sucesso!');
 });
 
-// Registro das rotas de brechós com o limitador de segurança ativado
+// Grupos de Rotas protegidos
 app.use('/brechos', apiLimiter, thriftRoutes);
+app.use('/solicitacoes', apiLimiter, requestRoutes);
 
 app.listen(port, () => {
   console.log(`Servidor iniciado na porta ${port}`);
