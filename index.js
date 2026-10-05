@@ -14,6 +14,9 @@ const port = process.env.PORT || 8080;
 
 app.use(express.json());
 
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 app.get('/', (req, res) => {
   logger.info('Acessada a rota raiz de saúde da API');
   res.send('API do Alfinete rodando com sucesso!');
