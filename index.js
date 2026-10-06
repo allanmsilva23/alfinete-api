@@ -8,6 +8,7 @@ const apiLimiter = require('./src/config/rateLimit');
 // Importação das rotas
 const thriftRoutes = require('./src/routes/thriftRoutes');
 const requestRoutes = require('./src/routes/requestRoutes');
+const reviewRoutes = require('./src/routes/reviewRoutes');
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -25,6 +26,7 @@ app.get('/', (req, res) => {
 // Grupos de Rotas protegidos
 app.use('/brechos', apiLimiter, thriftRoutes);
 app.use('/solicitacoes', apiLimiter, requestRoutes);
+app.use('/avaliacoes', apiLimiter, reviewRoutes);
 
 app.listen(port, () => {
   console.log(`Servidor iniciado na porta ${port}`);
