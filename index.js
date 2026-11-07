@@ -1,33 +1,26 @@
-require('dotenv').config();
-require('newrelic');
-
-const express = require('express');
-const logger = require('./src/config/logger');
-const apiLimiter = require('./src/config/rateLimit'); 
-
-// Importação das rotas
-const thriftRoutes = require('./src/routes/thriftRoutes');
-const requestRoutes = require('./src/routes/requestRoutes');
-const reviewRoutes = require('./src/routes/reviewRoutes');
-
-const app = express();
-const port = process.env.PORT || 8080;
-
-app.use(express.json());
-
-const path = require('path');
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-app.get('/', (req, res) => {
-  logger.info('Acessada a rota raiz de saúde da API');
-  res.send('API do Alfinete rodando com sucesso!');
+require('dotenv').config({quiet:true});
+if(process.env.NEW_RELIC_ENABLED!=='false')require('newrelic');
+const express=require('express');const path=require('path');
+const logger=require('./src/config/logger');const apiLimiter=require('./src/config/rateLimit');
+const app=express();
+if(!process.env.JWT_SECRET||process.env.JWT_SECRET.length<32)throw new Error('Defina JWT_SECRET forte (pelo menos 32 caracteres).');
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
+app.use(express.json({limit:'100kb'}));
+app.use('/uploads',express.static(path.join(__dirname,'uploads')));
+app.get('/',(_,res)=>res.send('API do Alfinete rodando com sucesso!'));
+app.use('/auth',apiLimiter,require('./src/routes/authRoutes'));
+app.use('/usuarios',apiLimiter,require('./src/routes/userRoutes'));
+app.use('/favoritos',apiLimiter,require('./src/routes/favoriteRoutes'));
+app.use('/brechos',apiLimiter,require('./src/routes/thriftRoutes'));
+app.use('/solicitacoes',apiLimiter,require('./src/routes/requestRoutes'));
+app.use('/avaliacoes',apiLimiter,require('./src/routes/reviewRoutes'));
+app.use('/admin',apiLimiter,require('./src/routes/adminRoutes'));
+app.use('/painel-brecho',apiLimiter,require('./src/routes/ownerRoutes'));
+app.use((error,req,res,next)=>{
+  logger.error(`${req.method} ${req.originalUrl}: ${error.stack||error.message}`);
+  if(error.name==='MulterError'||error.message?.startsWith('Envie apenas imagens')) return res.status(400).json({sucesso:false,mensagem:'Envie até 5 imagens JPG, PNG ou WebP de até 6 MB cada.'});
+  return res.status(500).json({sucesso:false,mensagem:'Erro interno do servidor.'});
 });
-
-// Grupos de Rotas protegidos
-app.use('/brechos', apiLimiter, thriftRoutes);
-app.use('/solicitacoes', apiLimiter, requestRoutes);
-app.use('/avaliacoes', apiLimiter, reviewRoutes);
-
-app.listen(port, () => {
-  console.log(`Servidor iniciado na porta ${port}`);
-});
+const port=Number(process.env.PORT||8080),host=process.env.IP||process.env.HOST||'::';
+app.listen(port,host,()=>console.log(`Servidor iniciado em [${host}]:${port}`));

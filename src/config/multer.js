@@ -1,16 +1,17 @@
 const multer = require('multer');
 const path = require('path');
-
-// Configura onde e com que nome os arquivos serão salvos
+const fs = require('fs');
+const crypto = require('crypto');
+const directory = path.resolve(__dirname, '../../uploads');
+fs.mkdirSync(directory, { recursive: true });
+const ext = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/'); // Salva na pasta raiz 'uploads'
-  },
-  filename: function (req, file, cb) {
-    // Cria um nome único usando a data atual e a extensão original
-    cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
-  }
+  destination: (_, __, cb) => cb(null, directory),
+  filename: (_, file, cb) => cb(null, `${Date.now()}-${crypto.randomBytes(12).toString('hex')}${ext[file.mimetype]}`),
 });
-
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage,
+  limits: { fileSize: 6 * 1024 * 1024, files: 5 },
+  fileFilter: (_, file, cb) => ext[file.mimetype] ? cb(null, true) : cb(new Error('Envie apenas imagens JPG, PNG ou WebP.')),
+});
 module.exports = upload;

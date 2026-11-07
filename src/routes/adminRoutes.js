@@ -1,0 +1,10 @@
+const r=require('express').Router();
+const c=require('../controllers/adminController');
+const {requireAuth,role}=require('../middleware/auth');
+r.use(requireAuth,role('admin'));
+r.get('/brechos',c.list);
+r.patch('/brechos/:id',c.update);
+r.post('/brechos/:id/aprovar',c.approve);
+r.post('/brechos/:id/reenviar-email',c.resend);
+r.delete('/brechos/:id',c.remove);
+module.exports=r;

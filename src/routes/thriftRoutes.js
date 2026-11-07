@@ -1,14 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const thriftController = require('../controllers/thriftController');
+const router = require('express').Router();
+const thrift = require('../controllers/thriftController');
+const { listOnMap } = require('../controllers/mapController');
 
-// Configurar a rota GET /brechos/filtros
-router.get('/filtros', thriftController.getThriftStores);
-
-// Rota de listagem geral (Feed)
-router.get('/filtros', thriftController.getThriftStores);
-
-// Cumprindo o checklist: Configurar a rota GET /brechos/:id
-router.get('/:id', thriftController.getThriftStoreById);
+router.get('/mapa', listOnMap);
+router.get('/filtros', thrift.getThriftStores);
+router.get('/:id', thrift.getThriftStoreById);
 
 module.exports = router;
