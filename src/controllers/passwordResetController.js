@@ -15,7 +15,6 @@ const validEmail = value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.le
 const validPassword = value => typeof value === 'string' && value.length >= 8 && Buffer.byteLength(value, 'utf8') <= 72;
 const validCode = value => typeof value === 'string' && /^\d{6}$/.test(value);
 
-// Mesmo segredo permanece no servidor. Sem o JWT_SECRET, o backend já não inicia.
 function codeHash(userId, code) {
   return crypto.createHmac('sha256', process.env.JWT_SECRET)
     .update(`alfinete-reset-otp:${userId}:${code}`)
@@ -31,13 +30,11 @@ function equalHex(a, b) {
   return x.length === 32 && y.length === 32 && crypto.timingSafeEqual(x, y);
 }
 
-// 1) Pede um código. Resposta genérica não revela se o e-mail existe.
 async function requestOtp(req, res, next) {
   try {
     const email = cleanEmail(req.body?.email);
     if (!validEmail(email)) return reject(res, 400, 'Informe um e-mail válido.');
 
-    // Não cria senha para perfis que só usam autenticação Google.
     const [[user]] = await pool.execute(
       'SELECT id, nome FROM usuarios WHERE email = ? AND senha_hash IS NOT NULL AND ativo = 1 LIMIT 1',
       [email]
@@ -89,7 +86,6 @@ async function requestOtp(req, res, next) {
       try {
         await sendPasswordOtpEmail({ to: email, code, nome: user.nome });
       } catch (e) {
-        // Não revela existência da conta. A falha é registrada no servidor.
         console.error('Falha ao enviar OTP de recuperação:', e.code || e.name || 'SMTP_ERROR');
       }
     }
@@ -97,7 +93,6 @@ async function requestOtp(req, res, next) {
   } catch (e) { return next(e); }
 }
 
-// 2) Verifica o código, consome o OTP e emite autorização curta para trocar senha.
 async function verifyOtp(req, res, next) {
   let conn;
   try {
@@ -125,7 +120,6 @@ async function verifyOtp(req, res, next) {
     if (!matches) {
       const attempts = Number(record.tentativas) + 1;
       if (attempts >= 5) {
-        // Conserva o controle de 60s para impedir reenvios imediatos após 5 falhas.
         await conn.execute(
           'UPDATE recuperacao_senha_otp SET codigo_hash = NULL, codigo_expira_em = NULL, tentativas = 5, reset_token_hash = NULL, reset_token_expira = NULL WHERE usuario_id = ?',
           [record.usuario_id]
@@ -157,7 +151,6 @@ async function verifyOtp(req, res, next) {
   }
 }
 
-// 3) Somente com o token temporário obtido após confirmar o OTP.
 async function resetPassword(req, res, next) {
   let conn;
   try {
@@ -171,7 +164,6 @@ async function resetPassword(req, res, next) {
     if (nova_senha !== confirmar_senha) {
       return reject(res, 400, 'As duas senhas precisam ser iguais.');
     }
-    // Faz o hash antes da transação para reduzir o tempo de bloqueio do banco.
     const senhaHash = await bcrypt.hash(nova_senha, 12);
     conn = await pool.getConnection();
     await conn.beginTransaction();

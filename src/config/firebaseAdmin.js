@@ -5,7 +5,6 @@ function initFirebase() {
   if (getApps().length) return getApp();
   const serviceFile = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (serviceFile) {
-    // Nunca disponibilize esse JSON no frontend ou no Git.
     const account = require(path.resolve(process.cwd(), serviceFile));
     return initializeApp({ credential: cert(account) });
   }

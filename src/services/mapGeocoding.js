@@ -1,6 +1,3 @@
-/**
- * Geocodificacao dos enderecos comerciais com Google Geocoding API.
- */
 function completeAddress(store) {
   const { logradouro, numero, cidade, estado } = store;
   if (![logradouro, numero, cidade, estado].every(v => typeof v === 'string' && v.trim())) {

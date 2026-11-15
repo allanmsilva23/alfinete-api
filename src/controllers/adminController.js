@@ -75,7 +75,6 @@ async function remove(req,res,next){
     await conn.beginTransaction();
     const [[b]]=await conn.execute('SELECT id,usuario_id FROM brecho WHERE id=? FOR UPDATE',[id]);
     if(!b){await conn.rollback();return reject(res,404,'Brechó não encontrado.');}
-    // Desativação lógica: conserva avaliações, solicitações e histórico.
     await conn.execute('UPDATE brecho SET ativo=0,status_aprovacao=\'REJEITADO\' WHERE id=?',[id]);
     if(b.usuario_id) await conn.execute('UPDATE usuarios SET ativo=0,status_aprovacao=\'REJEITADO\' WHERE id=?',[b.usuario_id]);
     await conn.commit();

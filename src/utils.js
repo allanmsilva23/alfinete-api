@@ -3,7 +3,7 @@ const fs = require('fs/promises');
 const publicUrl = name => `${(process.env.API_PUBLIC_URL || 'https://alfinete.alwaysdata.net').replace(/\/$/, '')}/uploads/${name}`;
 const validId = id => /^[1-9]\d*$/.test(String(id)) && Number.isSafeInteger(Number(id));
 const reject = (res, code, mensagem) => res.status(code).json({ sucesso: false, mensagem });
-// Remove apenas arquivos desta pasta; nunca tente apagar URLs externas.
+
 async function unlinkLocal(url) {
   if (!url || typeof url !== 'string') return;
   const name = url.split('/').pop();

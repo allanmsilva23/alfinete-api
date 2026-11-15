@@ -18,8 +18,6 @@ async function me(req,res,next){
   }catch(e){next(e);}
 }
 
-// Deixa a primeira letra de cada palavra maiúscula, preservando acentos.
-// A transformação é feita NO SERVIDOR para que todas as telas recebam o mesmo padrão.
 function normalizarEstilo(entrada){
   const texto=entrada.normalize('NFC').trim().replace(/\s+/g,' ').toLocaleLowerCase('pt-BR');
   return texto.replace(/(^|[\s/\-&+._'])(\p{L})/gu,(_,separador,letra)=>
@@ -66,7 +64,6 @@ async function update(req,res,next){
         return reject(res,400,'O preço mínimo não pode ser maior que o máximo.');
       changes.preco_minimo=min;
       changes.preco_maximo=max;
-      // Campo legado continua existindo apenas para compatibilidade e apresentação.
       changes.faixa_preco=min===null?null:`${moeda(min)} a ${moeda(max)}`;
     }
     const informouEstilos=Object.prototype.hasOwnProperty.call(body,'estilos');
@@ -94,7 +91,6 @@ async function update(req,res,next){
       await saveAddress(conn,b.id,address);
       if(changes.nome) await conn.execute('UPDATE usuarios SET nome=? WHERE id=?',[changes.nome,req.user.id]);
       if(informouEstilos){
-        // Substitui apenas as relações DESTE brechó. Não apaga categorias globais.
         await conn.execute('DELETE FROM brecho_estilo WHERE brecho_id=?',[b.id]);
         for(const nome of estilos){
           const [[existente]]=await conn.execute('SELECT id,nome FROM estilo WHERE nome=? LIMIT 1',[nome]);
@@ -103,7 +99,6 @@ async function update(req,res,next){
             const [insert]=await conn.execute('INSERT INTO estilo (nome) VALUES (?)',[nome]);
             estiloId=insert.insertId;
           }else if(existente.nome!==nome){
-            // Uniformiza também um estilo previamente salvo em minúsculas.
             await conn.execute('UPDATE estilo SET nome=? WHERE id=?',[nome,estiloId]);
           }
           await conn.execute('INSERT INTO brecho_estilo (brecho_id,estilo_id) VALUES (?,?)',[b.id,estiloId]);
@@ -127,13 +122,12 @@ async function photos(req,res,next){
       const [[{total}]]=await conn.execute('SELECT COUNT(*) total FROM brecho_fotos WHERE brecho_id=?',[b.id]);
       if(Number(total)+files.length>5) {await conn.rollback();return reject(res,400,'O brechó pode ter no máximo 5 fotos.');}
       for(const [i,file] of files.entries()) await conn.execute('INSERT INTO brecho_fotos (brecho_id,url,ordem) VALUES (?,?,?)',[b.id,publicUrl(file.filename),Number(total)+i]);
-      // Capa: primeira foto caso não tenha capa.
       const [[cover]]=await conn.execute('SELECT url FROM brecho_fotos WHERE brecho_id=? ORDER BY ordem,id LIMIT 1',[b.id]);
       await conn.execute('UPDATE brecho SET imagem_url=? WHERE id=?',[cover?.url||null,b.id]);
       await conn.commit();
       return res.status(201).json({sucesso:true,mensagem:'Fotos adicionadas com sucesso.'});
     }catch(e){await conn.rollback();throw e;}finally{conn.release();}
-  }catch(e){next(e);}finally{ // Remoção de arquivos apenas quando não foram registrados.
+  }catch(e){next(e);}finally{
     if(!res.headersSent || res.statusCode>=400) for(const f of files) await unlinkLocal(publicUrl(f.filename));
   }
 }
