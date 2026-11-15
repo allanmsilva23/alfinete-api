@@ -1,0 +1,10 @@
+const r=require('express').Router();
+const c=require('../controllers/ownerController');
+const {requireAuth,role}=require('../middleware/auth');
+const upload=require('../config/multer');
+r.use(requireAuth,role('brecho'));
+r.get('/me',c.me);r.patch('/me',c.update);r.delete('/me',c.deleteAccount);
+r.post('/fotos',upload.array('fotos',5),c.photos);r.delete('/fotos/:id',c.deletePhoto);
+r.get('/solicitacoes',c.requests);r.patch('/solicitacoes/:id/status',c.status);
+r.get('/avaliacoes',c.reviews);r.patch('/avaliacoes/:id/resposta',c.reply);
+module.exports=r;

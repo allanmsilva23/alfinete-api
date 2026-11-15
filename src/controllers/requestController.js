@@ -1,191 +1,26 @@
-const pool = require('../config/db');
-const logger = require('../config/logger');
-
-const createRequest = async (req, res) => {
-  try {
-    console.log('================================');
-    console.log('POST /solicitacoes');
-    console.log('BODY:', req.body);
-    console.log('FILES:', req.files);
-    console.log('================================');
-
-    const {
-      usuario_id,
-      brecho_id,
-      categoria_peca,
-      marca,
-      tamanho,
-      possui_manchas,
-      possui_rasgos,
-      descricao,
-    } = req.body || {};
-
-    // ============================================
-    // VALIDAÇÕES
-    // ============================================
-
-    if (!usuario_id) {
-      return res.status(400).json({
-        sucesso: false,
-        mensagem: 'usuario_id é obrigatório.',
-      });
-    }
-
-    if (!brecho_id) {
-      return res.status(400).json({
-        sucesso: false,
-        mensagem: 'brecho_id é obrigatório.',
-      });
-    }
-
-    if (!categoria_peca) {
-      return res.status(400).json({
-        sucesso: false,
-        mensagem: 'categoria_peca é obrigatória.',
-      });
-    }
-
-    // ============================================
-    // ARQUIVOS
-    // ============================================
-
-    const arquivoFrente =
-      req.files?.fotoFrente?.[0] || null;
-
-    const arquivoVerso =
-      req.files?.fotoVerso?.[0] || null;
-
-    if (!arquivoFrente) {
-      return res.status(400).json({
-        sucesso: false,
-        mensagem:
-          'A foto da frente é obrigatória.',
-      });
-    }
-
-    // ============================================
-    // URLs
-    // ============================================
-
-    const baseUrl =
-      `${req.protocol}://${req.get('host')}/uploads/`;
-
-    const fotoFrenteUrl =
-      arquivoFrente
-        ? baseUrl + arquivoFrente.filename
-        : null;
-
-    const fotoVersoUrl =
-      arquivoVerso
-        ? baseUrl + arquivoVerso.filename
-        : null;
-
-    console.log(
-      'Foto frente URL:',
-      fotoFrenteUrl
-    );
-
-    console.log(
-      'Foto verso URL:',
-      fotoVersoUrl
-    );
-
-    // ============================================
-    // BANCO DE DADOS
-    // ============================================
-
-    const [result] = await pool.query(
-      `
-        INSERT INTO solicitacoes_pecas (
-          usuario_id,
-          brecho_id,
-          categoria_peca,
-          marca,
-          tamanho,
-          possui_manchas,
-          possui_rasgos,
-          descricao,
-          foto_frente_url,
-          foto_verso_url,
-          status
-        )
-        VALUES (
-          ?,
-          ?,
-          ?,
-          ?,
-          ?,
-          ?,
-          ?,
-          ?,
-          ?,
-          ?,
-          'PENDENTE'
-        )
-      `,
-      [
-        usuario_id,
-        brecho_id,
-        categoria_peca,
-        marca || null,
-        tamanho || null,
-
-        possui_manchas === 'true',
-        possui_rasgos === 'true',
-
-        descricao || '',
-
-        fotoFrenteUrl,
-        fotoVersoUrl,
-      ]
-    );
-
-    logger.info(
-      `Nova solicitação cadastrada com sucesso. ID: ${result.insertId}`
-    );
-
-    return res.status(201).json({
-      sucesso: true,
-
-      mensagem:
-        'Solicitação enviada com sucesso.',
-
-      dados: {
-        solicitacao_id:
-          result.insertId,
-
-        foto_frente_url:
-          fotoFrenteUrl,
-
-        foto_verso_url:
-          fotoVersoUrl,
-      },
-    });
-  } catch (error) {
-    console.error(
-      'ERRO POST /solicitacoes:',
-      error
-    );
-
-    logger.error(
-      `Erro na rota POST /solicitacoes: ${error.message}`
-    );
-
-    return res.status(500).json({
-      sucesso: false,
-
-      mensagem:
-        'Erro interno ao cadastrar solicitação.',
-
-      erro:
-        process.env.NODE_ENV ===
-        'development'
-          ? error.message
-          : undefined,
-    });
-  }
-};
-
-module.exports = {
-  createRequest,
-};
+const pool=require('../config/db');
+const {validId,reject,publicUrl,unlinkLocal}=require('../utils');
+async function createRequest(req,res,next){
+  const files=Object.values(req.files||{}).flat();
+  try{
+    const b=req.body||{};
+    if(!validId(b.brecho_id) || typeof b.categoria_peca!=='string'||b.categoria_peca.trim().length<2||b.categoria_peca.length>100) return reject(res,400,'Informe brechó e categoria da peça.');
+    if(!req.files?.fotoFrente?.[0])return reject(res,400,'Foto da frente obrigatória.');
+    const [[store]]=await pool.execute('SELECT id FROM brecho WHERE id=? AND ativo=1 AND status_aprovacao=\'APROVADO\'',[b.brecho_id]);
+    if(!store)return reject(res,404,'Brechó não disponível.');
+    const clean=(s,max=250)=>String(s||'').trim().slice(0,max);
+    const [r]=await pool.execute(`INSERT INTO solicitacoes_pecas
+      (usuario_id,brecho_id,categoria_peca,marca,tamanho,possui_manchas,possui_rasgos,descricao,foto_frente_url,foto_verso_url,status)
+      VALUES (?,?,?,?,?,?,?,?,?,?,'PENDENTE')`,[
+      req.user.id,b.brecho_id,clean(b.categoria_peca,100),clean(b.marca,100),clean(b.tamanho,30),b.possui_manchas==='true'?1:0,b.possui_rasgos==='true'?1:0,
+      clean(b.descricao,1500),publicUrl(req.files.fotoFrente[0].filename),req.files?.fotoVerso?.[0]?publicUrl(req.files.fotoVerso[0].filename):null
+    ]);
+    return res.status(201).json({sucesso:true,mensagem:'Peça enviada para avaliação.',dados:{solicitacao_id:r.insertId}});
+  }catch(e){next(e);}finally{if(!res.headersSent || res.statusCode>=400) for(const f of files) await unlinkLocal(publicUrl(f.filename));}
+}
+async function mine(req,res,next){try{
+  const [rows]=await pool.execute(`SELECT s.*,b.nome AS nome_brecho,b.telefone,b.imagem_url AS imagem_brecho
+  FROM solicitacoes_pecas s JOIN brecho b ON b.id=s.brecho_id WHERE s.usuario_id=? ORDER BY s.criado_em DESC`,[req.user.id]);
+  return res.json({sucesso:true,dados:rows});
+}catch(e){next(e);}}
+module.exports={createRequest,mine};

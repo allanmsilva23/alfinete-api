@@ -10,7 +10,6 @@ const apiLimiter = rateLimit({
     mensagem: 'Muitas requisições feitas a partir deste IP. Por favor, tente novamente mais tarde.'
   },
   handler: (req, res, next, options) => {
-    // Log the security event when an IP exceeds the limit
     logger.warn(`Rate limit excedido para o IP: ${req.ip} na rota ${req.originalUrl}`);
     res.status(options.statusCode).json(options.message);
   },
